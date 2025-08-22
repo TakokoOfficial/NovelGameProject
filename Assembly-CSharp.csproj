@@ -60,7 +60,6 @@
     <Compile Include="Assets\Script\SubScript\AutoRotation.cs" />
     <Compile Include="Assets\Script\SubScript\EventPusher.cs" />
     <Compile Include="Assets\Script\GameManager.cs" />
-    <Compile Include="Assets\Rurutala\test.cs" />
     <Compile Include="Assets\Script\MusicPlayer.cs" />
     <Compile Include="Assets\Rurutala\scripts\FishBooksManager.cs" />
     <Compile Include="Assets\Script\SubScript\EventAppear.cs" />
@@ -768,14 +767,14 @@
     <Reference Include="Unity.Timeline.Editor">
       <HintPath>E:\create\NovelGameProject\Library\ScriptAssemblies\Unity.Timeline.Editor.dll</HintPath>
     </Reference>
-    <Reference Include="Unity.VisualScripting.Shared.Editor">
-      <HintPath>E:\create\NovelGameProject\Library\ScriptAssemblies\Unity.VisualScripting.Shared.Editor.dll</HintPath>
+    <Reference Include="UniTask.DOTween">
+      <HintPath>E:\create\NovelGameProject\Library\ScriptAssemblies\UniTask.DOTween.dll</HintPath>
     </Reference>
     <Reference Include="UniTask.Addressables">
       <HintPath>E:\create\NovelGameProject\Library\ScriptAssemblies\UniTask.Addressables.dll</HintPath>
     </Reference>
-    <Reference Include="UniTask.DOTween">
-      <HintPath>E:\create\NovelGameProject\Library\ScriptAssemblies\UniTask.DOTween.dll</HintPath>
+    <Reference Include="Unity.VisualScripting.Shared.Editor">
+      <HintPath>E:\create\NovelGameProject\Library\ScriptAssemblies\Unity.VisualScripting.Shared.Editor.dll</HintPath>
     </Reference>
     <Reference Include="Unity.VisualStudio.Editor">
       <HintPath>E:\create\NovelGameProject\Library\ScriptAssemblies\Unity.VisualStudio.Editor.dll</HintPath>
