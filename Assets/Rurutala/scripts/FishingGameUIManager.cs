@@ -7,6 +7,14 @@ public class FishingGameUIManager : MonoBehaviour
     // 例: public GameObject exclamationIcon;
     // 例: public TMPro.TextMeshProUGUI scoreText;
 
+    // GameButtonの参照
+    [SerializeField,Tooltip("竿を投げる（左クリック可）")] 
+    private GameObject _castButton;
+    [SerializeField,Tooltip("魚を釣り上げる（左クリック可）")]
+    private GameObject _hookButton;
+    [SerializeField,Tooltip("釣りに戻る（左クリック可）")]
+    private GameObject _backtoFishButton;
+    
     // UI参照
     public GameObject exclamationIcon;
     public Text averageReactionTimeText;
@@ -25,7 +33,7 @@ public class FishingGameUIManager : MonoBehaviour
     public GameObject InGameUI;
     public GameObject fishBookUI;
 
-    // ！アイコンの表示/非表示
+    //
     public void SetExclamationIconActive(bool isActive)
     {
         if (exclamationIcon != null)
@@ -51,9 +59,9 @@ public class FishingGameUIManager : MonoBehaviour
         {
             averageReactionTimeText.gameObject.SetActive(true);
             if (averageReactionTime > 0)
-                averageReactionTimeText.text = $"平均反応時間: {averageReactionTime:F3}秒";
+                averageReactionTimeText.text = $"今回の平均反応時間: {averageReactionTime:F3}秒";
             else
-                averageReactionTimeText.text = "平均反応時間: --";
+                averageReactionTimeText.text = "今回の平均反応時間: --";
         }
     }
     public void HideAverageReactionTime()
@@ -125,5 +133,23 @@ public class FishingGameUIManager : MonoBehaviour
             InGameUI.SetActive(!show); // 魚図鑑表示時は通常UIを非表示
             fishBookUI.SetActive(show);
         }
+    }
+    
+    public void setCastButtonActive(bool isActive)
+    {
+        if (_castButton != null)
+            _castButton.SetActive(isActive);
+    }
+    
+    public void setHookButtonActive(bool isActive)
+    {
+        if (_hookButton != null)
+            _hookButton.SetActive(isActive);
+    }
+    
+    public void setBacktoFishButtonActive(bool isActive)
+    {
+        if (_backtoFishButton != null)
+            _backtoFishButton.SetActive(isActive);
     }
 }

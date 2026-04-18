@@ -13,8 +13,8 @@ MonoBehaviour:
   m_Name: fish_1
   m_EditorClassIdentifier: 
   fishName: "\u30A2\u30B8"
-  fishModel: {fileID: 4736939724932953645, guid: 7cb1960daf70cb847af58160b7333060, type: 3}
+  fishModel: {fileID: 3184315612703341549, guid: 13ecfcb78883ce64891d314f34392bf6, type: 3}
   fishSpeciesId: 1
   escapeTime: 2
-  spawnRate: 0.1
+  spawnRate: 0.6
   isRare: 0

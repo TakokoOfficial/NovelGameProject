@@ -5,12 +5,15 @@ using Unity.VisualScripting;
 using UnityEngine;
 using UnityEngine.UI;
 
+/// <summary>
+/// 図鑑機能のクラス
+/// </summary>
 public class FishBooksManager : MonoBehaviour
 {
     [Header("UI要素")]
     public Button leftButton;
     public Button rightButton;
-    public Text fishNameText; // 魚の名前を表示するテキスト
+    public Text fishNameText; 
     public Text fishBestTimeText;
     
     [Header("魚のデータ")]
@@ -45,6 +48,7 @@ public class FishBooksManager : MonoBehaviour
         // 魚情報を非表示
         HideFishName();
         HideFishBestTime();
+        rareEffect.SetActive(false);
 
         // 生成したインスタンスを削除
         foreach (var kvp in fishInstances)
@@ -95,6 +99,7 @@ public class FishBooksManager : MonoBehaviour
         if (currentIndex > 0)
         {
             currentFishId = availableFishIds[currentIndex - 1];
+            rareEffect.SetActive(false);
             ShowCurrentFish();
             PreloadAdjacentFish();
         }
@@ -106,6 +111,7 @@ public class FishBooksManager : MonoBehaviour
         if (currentIndex < availableFishIds.Count - 1)
         {
             currentFishId = availableFishIds[currentIndex + 1];
+            rareEffect.SetActive(false);
             ShowCurrentFish();
             PreloadAdjacentFish();
         }
@@ -120,6 +126,21 @@ public class FishBooksManager : MonoBehaviour
         GameObject fishInstance = GetOrCreateFishInstance(currentFishId);
         if (fishInstance != null)
         {
+            //アニメーションのリセット
+            Transform fishTransform = fishInstance.GetComponent<Transform>();
+            if (fishTransform != null)
+            {
+                //fishTransform.position = Vector3.zero;
+                fishTransform.position = new Vector3(fishTransform.position.x, 0f, fishTransform.position.z); // Y軸のみリセット
+            }
+            
+            // アーマチュアの回転をリセット
+            Transform armature = fishInstance.transform.Find("アーマチュア");
+            if (armature != null)
+            {
+                armature.localRotation = Quaternion.identity;
+            }
+            
             // レア状態を確認
             bool isRare = PlayerPrefs.GetInt($"Fish_{currentFishId}_Rare", 0) == 1;
         
@@ -235,9 +256,9 @@ public class FishBooksManager : MonoBehaviour
             fishInstance = Instantiate(fishData.fishModel);
             
             // FishLookスクリプトを追加
-            if (fishInstance.GetComponent<FishLook>() == null)
+            if (fishInstance.transform.Find("アーマチュア").GetComponent<FishLook>() == null)
             {
-                fishInstance.AddComponent<FishLook>();
+                fishInstance.transform.Find("アーマチュア").AddComponent<FishLook>();
             }
             
             // 釣得状況を確認

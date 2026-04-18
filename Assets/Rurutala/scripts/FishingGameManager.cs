@@ -7,6 +7,11 @@ using UnityEngine.SceneManagement;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
+
+/// <summary>
+/// 釣りミニゲームの全体管理クラス
+/// 音を追加するところには○○する音とあるので「音」で検索をお願いします
+/// </summary>
 public class FishingGameManager : MonoBehaviour
 {
     [Header("ゲーム設定")]
@@ -23,7 +28,6 @@ public class FishingGameManager : MonoBehaviour
 
     [Header("魚のデータ")]
     public FishData[] availableFish;
-
 
     [Header("物置のカギ")]
     public FishData fish0Data;
@@ -42,14 +46,38 @@ public class FishingGameManager : MonoBehaviour
     public string nextSceneName = "TitleScene";
     public Button returnSceneButton; // 戻るボタン（シーン遷移用）
     
+    [SerializeField, Tooltip("釣りアニメーション")]
+    private Animator _lodAnimator;
+    
+    [SerializeField, Tooltip("レアエフェクト")]
+    private GameObject _rareEffect;
+
+    [SerializeField, Tooltip("レアエフェクト釣り時")]
+    private GameObject _rareEffectHook;
+    
+    [SerializeField, Tooltip("魚逃がしたときトースト通知オブジェクト")]
+    private GameObject _escapeToast;
+    
+    [SerializeField, Tooltip("魚逃がしたときトースト通知のテキスト")]
+    private Text _escapeToastText;
+    
+    [SerializeField,Tooltip("魚が逃げたときに直ぐに戻る押せないようにブロック")]
+    private GameObject _escapeBlocker;
+    
+    [SerializeField,Tooltip("バケツに魚を入れる用のスクリプト")]
+    private BucketFish _bucketFish;
+    
+    [SerializeField,Tooltip("浮きが着地したときの水エフェクト")]
+    private GameObject _ringOnTheWaterEffect;
+    private bool _isRingEffectPlayed = false;
 
     // プライベート変数
     private float waitStartTime;
     private float fishHookTime;
     private FishData currentFish;
     private bool canCatch = false;
-
-    // CancellationTokenSource for managing async operations
+    private FishingState previousStateBook;
+    
     private CancellationTokenSource fishWaitCts;
     private CancellationTokenSource fishEscapeCts;
     private CancellationTokenSource returnToWaitingCts;
@@ -63,7 +91,7 @@ public class FishingGameManager : MonoBehaviour
     private GameObject lastFishModelInstance;
 
     // Fish_0が釣れたかどうかを管理する変数
-    private bool isFish0Caught = false;
+    public static bool isFish0Caught = false;
 
     private void Start()
     {
@@ -84,27 +112,33 @@ public class FishingGameManager : MonoBehaviour
         }
         if (closeBookButton != null)
         {
-            closeBookButton.onClick.AddListener(OnCloseBookButtonClicked);
+            closeBookButton.onClick.AddListener(OnCloseFishBookButtonClicked);
         }
 
         if (returnSceneButton != null)
         {
             returnSceneButton.onClick.AddListener(OnContinueNG);
         }
+        
+        //最初はGameOverから（釣りを始めるかどうかから）
+        ChangeState(FishingState.GameOver);
+        OnGameOver?.Invoke();
+        GameOverSequence();
     }
 
     private void Update()
     {
-        HandleInput();
-        UpdateFishingLogic();
+        HandleInput();　//つり上げ時のみ左クリック全体を有効に
     }
 
+    //
     private void OnDestroy()
     {
         // すべてのCancellationTokenをキャンセル
         CancelAllAsyncOperations();
     }
-
+    
+    //クリック動作管理
     private void HandleInput()
     {
         if (Input.GetMouseButtonDown(0))
@@ -113,9 +147,14 @@ public class FishingGameManager : MonoBehaviour
             {
                 return;
             }
-            OnLeftClick();
+            //if(currentState == FishingState.FishOnHook || currentState == FishingState.Casting)
+            //{
+                //OnLeftClick();
+            //}
+
         }
     }
+    //クリック判定
     private bool IsPointerOverUI()
     {
         // EventSystemが存在しない場合はfalseを返す
@@ -132,7 +171,8 @@ public class FishingGameManager : MonoBehaviour
             return EventSystem.current.IsPointerOverGameObject();
         }
     }
-    private void OnLeftClick()
+    //クリック動作（ボタン押したときも同様）
+    public void OnLeftClick()
     {
         switch (currentState)
         {
@@ -151,6 +191,8 @@ public class FishingGameManager : MonoBehaviour
                 if (lastFishModelInstance != null)
                 {
                     Destroy(lastFishModelInstance);
+                    _rareEffect.SetActive(false);
+                    _rareEffectHook.SetActive(false);
                     lastFishModelInstance = null;
                 }
                 ChangeState(FishingState.Waiting);
@@ -160,32 +202,39 @@ public class FishingGameManager : MonoBehaviour
                     DebugLog("ゲームオーバー！");
                     OnGameOver?.Invoke();
                     GameOverSequence();
+                    ChangeState(FishingState.GameOver);
                 }
                 break;
+            case FishingState.GameOver:
             case FishingState.ViewingBook:
                 // 閲覧中は左クリックで何もしない（または必要に応じてページ送り等）
                 break;
         }
     }
 
+    //図鑑を開く
     private void OnFishBookButtonClicked()
     {
-        if (currentState == FishingState.Waiting)
+        if (currentState == FishingState.Waiting || currentState == FishingState.GameOver)
         {
+            previousStateBook = currentState;
             ChangeState(FishingState.ViewingBook);
             // 必要に応じて図鑑UI表示処理を呼ぶ
             if (uiManager != null) uiManager.ShowFishBook(true);
         }
     }
-    private void OnCloseBookButtonClicked()
+    
+    //図鑑を閉じる
+    private void OnCloseFishBookButtonClicked()
     {
         if (currentState == FishingState.ViewingBook)
         {
-            ChangeState(FishingState.Waiting);
+            ChangeState(previousStateBook);
             if (uiManager != null) uiManager.ShowFishBook(false);
         }
     }
 
+    // 竿を投げる処理 
     private async UniTaskVoid StartCastingAsync()
     {
         if (remainingBait <= 0)
@@ -213,7 +262,8 @@ public class FishingGameManager : MonoBehaviour
             DebugLog("魚の待機がキャンセルされました");
         }
     }
-
+    
+    // 魚がかかるまでの待機処理
     private async UniTask WaitForFishAsync(float waitTime, CancellationToken cancellationToken)
     {
         await UniTask.Delay((int)(waitTime * 1000), cancellationToken: cancellationToken);
@@ -232,6 +282,7 @@ public class FishingGameManager : MonoBehaviour
         }
     }
 
+    // 魚がかかってから逃げるまでのタイマー処理
     private async UniTaskVoid FishEscapeTimerAsync(float escapeTime)
     {
         // 前回のエスケープタイマーをキャンセル
@@ -253,6 +304,7 @@ public class FishingGameManager : MonoBehaviour
         }
     }
 
+    // 早押し失敗後に自動で待機状態に戻る処理
     private void EarlyClick()
     {
         // 魚の待機をキャンセル
@@ -261,11 +313,14 @@ public class FishingGameManager : MonoBehaviour
         remainingBait--;
         DebugLog($"早すぎるクリック！餌を消費しました。残り餌: {remainingBait}");
 
+        //魚が早押し失敗の音
+        
         ChangeState(FishingState.Failed);
 
         // ReturnToWaitingAsyncは呼ばない
     }
 
+    // 魚を釣る処理
     private void AttemptCatch()
     {
         if (!canCatch) return;
@@ -280,7 +335,7 @@ public class FishingGameManager : MonoBehaviour
             {
                 Destroy(lastFishModelInstance);
             }
-            lastFishModelInstance = Instantiate(currentFish.fishModel);
+            lastFishModelInstance = Instantiate(currentFish.fishModel,currentFish.fishModel.transform.position, currentFish.fishModel.transform.rotation);
             var animator = lastFishModelInstance.GetComponent<Animator>();
             if (animator != null)
             {
@@ -301,6 +356,12 @@ public class FishingGameManager : MonoBehaviour
             if (currentFish.isRare)
             {
                 PlayerPrefs.SetInt(baseKey + "_Rare", 1);
+                
+                // レア魚を釣ったときの特別な処理 アニメーションとかに入れるかも
+                _rareEffect.SetActive(true);
+                _rareEffectHook.SetActive(true);
+                
+                //レア魚の釣った瞬間の特別な音
             }
             PlayerPrefs.Save();
             // Fish_0を釣ったらフラグをON
@@ -317,31 +378,92 @@ public class FishingGameManager : MonoBehaviour
         // ここではゲームオーバー判定しない
     }
 
+    // 魚が逃げたときの処理
     private void FishEscaped()
     {
         DebugLog($"{currentFish.fishName}が逃げました！");
+        _escapeBlocker.SetActive(true);
+        _escapeToast.SetActive(true);
+        _escapeToastText.text = $"{currentFish.fishName}";
+        if(currentFish.isRare) _escapeToastText.text += "（レア）";
         remainingBait--;
         canCatch = false;
 
+        //魚が時間で逃げた音
+        
         ChangeState(FishingState.Failed);
 
         // ReturnToWaitingAsyncは呼ばない
         // elseは不要
     }
 
-    private void UpdateFishingLogic()
-    {
-        // 追加のロジックが必要な場合はここに記述
-    }
-
     // 状態遷移を一元管理するメソッド
     private void ChangeState(FishingState newState)
     {
         if (currentState == newState) return;
+        var oldState     = currentState;  
         currentState = newState;
         DebugLog($"状態遷移: {newState}");
         OnStateChanged?.Invoke(newState);
         // 必要に応じてここでUI更新やサウンド再生なども追加可能
+        if (newState == FishingState.Waiting)
+        {
+            if(oldState == FishingState.Success) _bucketFish.GetFish();
+            if(oldState == FishingState.GameOver) _bucketFish.ResetBucket();
+            _lodAnimator.SetTrigger("Waiting");
+            uiManager.setBacktoFishButtonActive(false);
+            uiManager.setCastButtonActive(true);
+            _isRingEffectPlayed = false;
+
+            //
+        }
+        else if (newState == FishingState.Casting)
+        {
+            _lodAnimator.SetTrigger("Cast");
+            uiManager.setCastButtonActive(false);
+            uiManager.setHookButtonActive(true);
+            
+            //竿を投げた音
+        }
+        else if (newState == FishingState.FishOnHook)
+        {
+            _lodAnimator.SetTrigger("FishOnHook");
+            //魚がかかった音
+        }
+        else if (newState == FishingState.Failed)
+        {
+            _lodAnimator.SetTrigger("Hook");
+            uiManager.setHookButtonActive(false);
+            uiManager.setBacktoFishButtonActive(true);
+            
+            ChangeState(FishingState.Waiting);
+            // ここで餌が0なら結果表示
+            if (remainingBait <= 0)
+            {
+                DebugLog("ゲームオーバー！");
+                OnGameOver?.Invoke();
+                GameOverSequence();
+                ChangeState(FishingState.GameOver);
+            }
+            
+            //魚が逃げた音(早押しと押せなかったときの区別を付けるなら別のところ)
+        }
+        else if (newState == FishingState.Success)
+        {
+            _lodAnimator.SetTrigger("Hook");
+            uiManager.setHookButtonActive(false);
+            uiManager.setBacktoFishButtonActive(true);
+
+            //魚を釣った音
+        }
+        else if(newState == FishingState.GameOver)
+        {
+            uiManager.setCastButtonActive(false);
+            uiManager.setHookButtonActive(false);
+            uiManager.setBacktoFishButtonActive(false);
+            
+            //三回釣って終了時音
+        }
     }
 
     private void HandleStateChangedUI(FishingState state)
@@ -355,6 +477,7 @@ public class FishingGameManager : MonoBehaviour
                 uiManager.HideFishReactionTime();
                 break;
             case FishingState.Casting:
+                _escapeToast.SetActive(false);
                 uiManager.SetExclamationIconActive(false);
                 uiManager.HideFishName();
                 uiManager.HideFishReactionTime();
@@ -423,14 +546,7 @@ public class FishingGameManager : MonoBehaviour
         // 万一全て除外された場合はavailableFish[0]を返す
         return availableFish[0];
     }
-
-    // デバッグ用メソッド
-    private void DebugLog(string message)
-    {
-        Debug.Log($"[FishingGame] {message}");
-    }
-
-    // テスト用メソッド
+    
     public void ResetGame()
     {
         CancelAllAsyncOperations();
@@ -454,14 +570,6 @@ public class FishingGameManager : MonoBehaviour
         // Fish_0の釣得フラグもリセット（必要に応じて）
         isFish0Caught = PlayerPrefs.GetInt("Fish_0_Count", 0) > 0;
     }
-
-    // すべての非同期操作をキャンセル
-    private void CancelAllAsyncOperations()
-    {
-        fishWaitCts?.Cancel();
-        fishEscapeCts?.Cancel();
-        returnToWaitingCts?.Cancel();
-    }
     
     private void GameOverSequence()
     {
@@ -474,6 +582,15 @@ public class FishingGameManager : MonoBehaviour
         }
     }
 
+    public void EnableRingOnTheWaterEffect()
+    {
+        if(_isRingEffectPlayed) return;
+        var obj = Instantiate(_ringOnTheWaterEffect);
+        _isRingEffectPlayed = true;
+        obj.SetActive(true);
+    }
+
+    
     private void OnContinueOK()
     {
         if (uiManager != null)
@@ -494,5 +611,19 @@ public class FishingGameManager : MonoBehaviour
         {
             SceneManager.LoadScene(nextSceneName);
         }
+    }
+    
+    // すべての非同期操作をキャンセル
+    private void CancelAllAsyncOperations()
+    {
+        fishWaitCts?.Cancel();
+        fishEscapeCts?.Cancel();
+        returnToWaitingCts?.Cancel();
+    }
+
+    // デバッグ用メソッド
+    private void DebugLog(string message)
+    {
+        Debug.Log($"[FishingGame] {message}");
     }
 }

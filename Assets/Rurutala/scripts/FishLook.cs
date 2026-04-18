@@ -1,5 +1,9 @@
+using System;
 using UnityEngine;
 
+/// <summary>
+/// 魚を回転する
+/// </summary>
 public class FishLook : MonoBehaviour
 {
     [Header("回転設定")]
@@ -11,19 +15,33 @@ public class FishLook : MonoBehaviour
     private Vector3 lastMousePosition;
     private Camera mainCamera;
     
+    private Quaternion initialRotation;
+
+    private void Awake()
+    {
+        initialRotation = transform.rotation;
+    }
+
     private void Start()
     {
+        if (GetComponent<Collider>() == null)
+        {
+            var col = gameObject.AddComponent<SphereCollider>();
+            col.radius = 1.5f;
+        }
+        
         mainCamera = Camera.main;
         if (mainCamera == null)
         {
             mainCamera = FindObjectOfType<Camera>();
         }
+        
     }
     
     private void OnEnable()
     {
         // 魚の回転を初期状態にリセット
-        transform.rotation = Quaternion.identity;
+        transform.rotation = initialRotation;
     
         // ドラッグ状態もリセット
         isDragging = false;

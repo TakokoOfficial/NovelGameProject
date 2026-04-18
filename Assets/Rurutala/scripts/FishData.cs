@@ -9,7 +9,7 @@ public class FishData : ScriptableObject
     public int fishSpeciesId; // 魚種ID（同じ種類の魚は同じID）
 
     [Header("釣りの設定")]
-    [Range(0.5f, 5.0f)]
+    [Range(0.2f, 5.0f)]
     public float escapeTime = 2.0f; // 魚が逃げるまでの時間
 
     [Range(0.01f, 1.0f)]

@@ -6,5 +6,6 @@ public enum FishingState
     Catching,       // 魚を釣り上げ中
     Success,        // 釣り成功
     Failed,         // 釣り失敗
+    GameOver,       // ゲームオーバー
     ViewingBook     // 魚図鑑閲覧モード
 }
