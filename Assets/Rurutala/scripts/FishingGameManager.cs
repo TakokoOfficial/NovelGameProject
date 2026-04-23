@@ -281,6 +281,11 @@ public class FishingGameManager : MonoBehaviour
             FishEscapeTimerAsync(currentFish.escapeTime).Forget();
         }
     }
+    
+    public void SetFishHookTime()
+    {
+        fishHookTime = Time.time;
+    }
 
     // 魚がかかってから逃げるまでのタイマー処理
     private async UniTaskVoid FishEscapeTimerAsync(float escapeTime)

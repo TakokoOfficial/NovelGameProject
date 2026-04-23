@@ -13,6 +13,7 @@ public class RingOnTheWater : MonoBehaviour
         if (_fishingGameManager != null)
         {
             _fishingGameManager.EnableRingOnTheWaterEffect();
+            _fishingGameManager.SetFishHookTime();
         }
         else
         {
